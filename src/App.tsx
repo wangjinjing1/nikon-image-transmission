@@ -20,7 +20,10 @@ import type { CameraConnection, CameraModel, CameraPhoto, ConnectionMode, Downlo
 
 const cameraClient = new NikonCameraClient();
 
+type ActiveView = 'connect' | 'download';
+
 export function App() {
+  const [activeView, setActiveView] = useState<ActiveView>('connect');
   const [model, setModel] = useState<CameraModel>('Z30');
   const [mode, setMode] = useState<ConnectionMode>('ap');
   const [host, setHost] = useState('192.168.1.1');
@@ -156,8 +159,8 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <section className="control-rail">
-        <div className="brand-lockup">
+      <header className="app-topbar">
+        <div className="brand-lockup compact">
           <div className="brand-mark">
             <Camera size={28} />
           </div>
@@ -167,6 +170,20 @@ export function App() {
           </div>
         </div>
 
+        <nav className="page-tabs" aria-label="页面切换">
+          <button className={activeView === 'connect' ? 'active' : ''} onClick={() => setActiveView('connect')}>
+            <Wifi size={18} />
+            连接相机
+          </button>
+          <button className={activeView === 'download' ? 'active' : ''} onClick={() => setActiveView('download')}>
+            <Images size={18} />
+            下载照片
+          </button>
+        </nav>
+      </header>
+
+      <section className={`page-panel connect-panel ${activeView === 'connect' ? 'active' : ''}`} hidden={activeView !== 'connect'}>
+        <div className="control-rail">
         <div className="status-panel">
           <div className={`signal ${connection ? 'online' : ''}`}>
             {connection ? <Wifi size={22} /> : <WifiOff size={22} />}
@@ -229,6 +246,11 @@ export function App() {
           </button>
         </div>
 
+        <button className="download-page-action" disabled={!connection || photos.length === 0} onClick={() => setActiveView('download')}>
+          <Images size={18} />
+          下载照片
+        </button>
+
         {showSettings ? (
           <div className="settings-panel">
             <label className="field">
@@ -247,9 +269,11 @@ export function App() {
             <p>默认保存到手机 Pictures 目录下的这个文件夹。</p>
           </div>
         ) : null}
+        </div>
       </section>
 
-      <section className="workspace">
+      <section className={`page-panel download-panel ${activeView === 'download' ? 'active' : ''}`} hidden={activeView !== 'download'}>
+        <div className="workspace">
         <header className="toolbar">
           <div>
             <p className="eyebrow">Camera Roll</p>
@@ -323,6 +347,7 @@ export function App() {
             ))}
           </aside>
         ) : null}
+        </div>
       </section>
     </main>
   );

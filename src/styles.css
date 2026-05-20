@@ -47,26 +47,80 @@ button:disabled {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 100vh;
   min-height: 100dvh;
+  max-height: 100dvh;
   padding:
     var(--safe-top)
     var(--safe-right)
     max(var(--safe-bottom), 10px)
     var(--safe-left);
+  overflow: hidden;
+}
+
+.app-topbar {
+  position: relative;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(247, 244, 234, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(17, 19, 21, 0.96);
+  backdrop-filter: blur(22px);
+}
+
+.page-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid rgba(247, 244, 234, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.page-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(247, 244, 234, 0.76);
+  background: transparent;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.page-tabs .active {
+  color: #111315;
+  background: #f7f4ea;
+}
+
+.page-panel {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .control-rail {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 28px;
-  border-right: 1px solid rgba(247, 244, 234, 0.12);
+  width: min(560px, 100%);
+  height: 100%;
+  margin: 0 auto;
+  padding: 28px 28px max(28px, calc(28px + var(--safe-bottom)));
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
-    rgba(17, 19, 21, 0.84);
-  backdrop-filter: blur(24px);
+    rgba(17, 19, 21, 0.58);
+  overflow: auto;
 }
 
 .brand-lockup,
@@ -82,6 +136,15 @@ button:disabled {
 
 .brand-lockup {
   gap: 14px;
+}
+
+.brand-lockup.compact .brand-mark {
+  width: 48px;
+  height: 48px;
+}
+
+.brand-lockup.compact h1 {
+  font-size: clamp(1.35rem, 2.2vw, 2rem);
 }
 
 .brand-mark {
@@ -252,6 +315,7 @@ h2 {
 .primary-action,
 .secondary-action,
 .download-action,
+.download-page-action,
 .icon-action {
   display: inline-flex;
   align-items: center;
@@ -264,7 +328,8 @@ h2 {
 }
 
 .primary-action,
-.download-action {
+.download-action,
+.download-page-action {
   flex: 1;
   color: #fff;
   background: #d7192a;
@@ -291,8 +356,10 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 28px 28px max(28px, calc(28px + var(--safe-bottom)));
+  height: 100%;
+  padding: 24px 28px max(28px, calc(28px + var(--safe-bottom)));
   min-width: 0;
+  overflow: auto;
 }
 
 .toolbar {
@@ -514,13 +581,10 @@ h2 {
 }
 
 @media (max-width: 900px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .control-rail {
-    border-right: 0;
-    border-bottom: 1px solid rgba(247, 244, 234, 0.12);
+  .app-topbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 14px 18px;
   }
 
   .button-row {
@@ -536,6 +600,18 @@ h2 {
 
   .workspace {
     padding-bottom: max(18px, calc(18px + var(--safe-bottom)));
+  }
+
+  .control-rail {
+    padding-bottom: max(18px, calc(18px + var(--safe-bottom)));
+  }
+
+  .brand-lockup.compact {
+    justify-content: center;
+  }
+
+  .page-tabs {
+    width: 100%;
   }
 
   .toolbar,
