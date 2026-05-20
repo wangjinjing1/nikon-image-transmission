@@ -378,6 +378,10 @@ h2 {
   gap: 12px;
 }
 
+.sta-retry-action {
+  width: 100%;
+}
+
 .button-row {
   gap: 10px;
   margin-top: 0;
