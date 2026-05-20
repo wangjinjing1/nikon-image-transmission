@@ -336,6 +336,11 @@ h2 {
   line-height: 1.55;
 }
 
+.sta-connect-block {
+  display: grid;
+  gap: 12px;
+}
+
 .button-row {
   gap: 10px;
   margin-top: auto;

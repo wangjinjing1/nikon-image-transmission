@@ -15,10 +15,23 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
+import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 @CapacitorPlugin(
         name = "NikonCamera",
@@ -29,20 +42,26 @@ import java.util.concurrent.Executors;
 public class NikonCameraPlugin extends Plugin {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private NikonPtpIpClient client;
+    private static final int STA_SCAN_TIMEOUT_MS = 350;
+    private static final int STA_SCAN_THREADS = 24;
 
     @PluginMethod
     public void connect(PluginCall call) {
         String model = call.getString("model", "Z30");
         String mode = call.getString("mode", "ap");
-        String host = call.getString("host", "192.168.1.1");
+        String host = call.getString("host", "");
         String wifiPassword = call.getString("wifiPassword", "");
         int port = call.getInt("port", 15740);
 
         executor.execute(() -> {
             try {
-                String targetHost = host == null || host.trim().isEmpty() ? detectGatewayAddress() : host.trim();
+                String targetHost = detectTargetAddress(mode, host, port);
                 if (targetHost.isEmpty()) {
-                    throw new IllegalStateException("AP 模式未检测到相机热点网关，请确认手机已连接相机 Wi-Fi。");
+                    throw new IllegalStateException(
+                            "sta".equals(mode)
+                                    ? "STA 模式未发现相机，请确认相机已连接手机热点或同一 Wi-Fi；如仍失败，请手动填写相机 IP。"
+                                    : "AP 模式未检测到相机热点网关，请确认手机已连接相机 Wi-Fi。"
+                    );
                 }
 
                 client = new NikonPtpIpClient(targetHost, port);
@@ -57,7 +76,7 @@ public class NikonCameraPlugin extends Plugin {
                 result.put("sessionId", session.sessionId);
                 call.resolve(result);
             } catch (Exception exception) {
-                call.reject("无法连接相机，请确认手机已连接相机 Wi-Fi。", exception);
+                call.reject(exception.getMessage() == null ? "无法连接相机，请确认手机已连接相机 Wi-Fi。" : exception.getMessage(), exception);
             }
         });
     }
@@ -143,6 +162,18 @@ public class NikonCameraPlugin extends Plugin {
         return cleaned.isEmpty() ? "尼康图传" : cleaned;
     }
 
+    private String detectTargetAddress(String mode, String host, int port) {
+        if (host != null && !host.trim().isEmpty()) {
+            return host.trim();
+        }
+
+        if ("sta".equals(mode)) {
+            return discoverStaCameraAddress(port);
+        }
+
+        return detectGatewayAddress();
+    }
+
     private String detectGatewayAddress() {
         WifiManager wifiManager = (WifiManager) getContext().getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
         if (wifiManager == null) {
@@ -155,5 +186,131 @@ public class NikonCameraPlugin extends Plugin {
         }
 
         return Formatter.formatIpAddress(dhcpInfo.gateway);
+    }
+
+    private String discoverStaCameraAddress(int port) {
+        WifiManager wifiManager = (WifiManager) getContext().getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
+        if (wifiManager == null) {
+            return "";
+        }
+
+        List<String> candidates = new ArrayList<>();
+        DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
+        if (dhcpInfo != null && dhcpInfo.ipAddress != 0) {
+            int network = dhcpInfo.netmask == 0 ? dhcpInfo.ipAddress & 0x00FFFFFF : dhcpInfo.ipAddress & dhcpInfo.netmask;
+            int ownIp = dhcpInfo.ipAddress;
+            int gateway = dhcpInfo.gateway;
+            candidates.addAll(buildScanCandidates(network, ownIp, gateway));
+        }
+
+        candidates.addAll(buildInterfaceScanCandidates());
+        if (candidates.isEmpty()) {
+            return "";
+        }
+
+        ExecutorService scanExecutor = Executors.newFixedThreadPool(STA_SCAN_THREADS);
+        CompletionService<String> completionService = new ExecutorCompletionService<>(scanExecutor);
+        List<Future<String>> futures = new ArrayList<>();
+        try {
+            for (String candidate : candidates) {
+                futures.add(completionService.submit(new PortCheck(candidate, port)));
+            }
+
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos((long) STA_SCAN_TIMEOUT_MS * Math.max(1, candidates.size() / STA_SCAN_THREADS + 1));
+            for (int index = 0; index < candidates.size(); index++) {
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) {
+                    break;
+                }
+
+                Future<String> future = completionService.poll(remaining, TimeUnit.NANOSECONDS);
+                if (future == null) {
+                    break;
+                }
+
+                String address = future.get();
+                if (!address.isEmpty()) {
+                    return address;
+                }
+            }
+        } catch (Exception ignored) {
+            return "";
+        } finally {
+            for (Future<String> future : futures) {
+                future.cancel(true);
+            }
+            scanExecutor.shutdownNow();
+        }
+
+        return "";
+    }
+
+    private List<String> buildScanCandidates(int network, int ownIp, int gateway) {
+        Set<String> candidates = new LinkedHashSet<>();
+        addSubnetCandidates(candidates, network, ownIp, gateway);
+        return new ArrayList<>(candidates);
+    }
+
+    private List<String> buildInterfaceScanCandidates() {
+        Set<String> candidates = new LinkedHashSet<>();
+        try {
+            for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if (!networkInterface.isUp() || networkInterface.isLoopback()) {
+                    continue;
+                }
+
+                for (InetAddress address : Collections.list(networkInterface.getInetAddresses())) {
+                    if (!(address instanceof Inet4Address) || address.isLoopbackAddress() || !address.isSiteLocalAddress()) {
+                        continue;
+                    }
+
+                    int ownIp = inetAddressToAndroidInt((Inet4Address) address);
+                    addSubnetCandidates(candidates, ownIp & 0x00FFFFFF, ownIp, 0);
+                }
+            }
+        } catch (Exception ignored) {
+            return new ArrayList<>(candidates);
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    private void addSubnetCandidates(Set<String> candidates, int network, int ownIp, int gateway) {
+        int base = network & 0x00FFFFFF;
+        for (int lastOctet = 1; lastOctet <= 254; lastOctet++) {
+            int candidate = base | (lastOctet << 24);
+            if (candidate == ownIp || candidate == gateway) {
+                continue;
+            }
+            candidates.add(Formatter.formatIpAddress(candidate));
+        }
+    }
+
+    private int inetAddressToAndroidInt(Inet4Address address) {
+        byte[] bytes = address.getAddress();
+        return (bytes[0] & 0xFF)
+                | ((bytes[1] & 0xFF) << 8)
+                | ((bytes[2] & 0xFF) << 16)
+                | ((bytes[3] & 0xFF) << 24);
+    }
+
+    private static final class PortCheck implements Callable<String> {
+        private final String address;
+        private final int port;
+
+        PortCheck(String address, int port) {
+            this.address = address;
+            this.port = port;
+        }
+
+        @Override
+        public String call() {
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(address, port), STA_SCAN_TIMEOUT_MS);
+                return address;
+            } catch (Exception ignored) {
+                return "";
+            }
+        }
     }
 }

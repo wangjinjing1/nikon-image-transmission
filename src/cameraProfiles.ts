@@ -13,7 +13,7 @@ export const cameraProfiles: CameraProfile[] = [
     name: 'Nikon Z5II',
     supportedModes: ['ap', 'sta'],
     defaultHost: '',
-    notes: '支持 AP 直连，也支持 STA 模式接入同一无线网络。'
+    notes: '支持 AP 直连，也支持 STA 模式接入手机热点或同一无线网络，APP 会自动发现相机地址。'
   }
 ];
 

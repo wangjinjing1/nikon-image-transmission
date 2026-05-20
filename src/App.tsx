@@ -44,18 +44,19 @@ export function App() {
   const connectionHost = mode === 'ap' ? '' : host.trim();
 
   async function connect() {
-    if (mode === 'sta' && !host.trim()) {
-      setMessage('请输入相机局域网 IP 地址。');
-      return;
-    }
-
     if (mode === 'ap' && !wifiPassword.trim()) {
       setMessage('请输入相机 Wi-Fi 密码后再连接。');
       return;
     }
 
     setBusy('connect');
-    setMessage(mode === 'ap' ? '正在连接相机热点服务...' : '正在连接局域网相机服务...');
+    setMessage(
+      mode === 'ap'
+        ? '正在连接相机热点服务...'
+        : connectionHost
+          ? '正在连接局域网相机服务...'
+          : '正在自动发现 STA 模式相机...'
+    );
     try {
       const nextConnection = await cameraClient.connect(model, mode, connectionHost, wifiPassword.trim());
       setConnection(nextConnection);
@@ -254,14 +255,20 @@ export function App() {
             <span>请先在手机系统 Wi-Fi 中连接相机热点，APP 会读取当前热点网关并连接相机。</span>
           </div>
         ) : (
-          <label className="field">
-            <span>相机局域网地址</span>
-            <input value={host} onChange={(event) => setHost(event.target.value)} placeholder="例如 192.168.0.23" />
-          </label>
+          <div className="sta-connect-block">
+            <div className="ap-hint">
+              <strong>STA 模式会自动发现相机</strong>
+              <span>请先让相机连接本手机热点或同一 Wi-Fi，APP 会扫描当前网络中的尼康 PTP/IP 服务；发现失败时可手动填写 IP。</span>
+            </div>
+            <label className="field">
+              <span>手动 IP 地址（可选）</span>
+              <input value={host} onChange={(event) => setHost(event.target.value)} placeholder="发现失败时填写，例如 192.168.43.23" />
+            </label>
+          </div>
         )}
 
         <label className="field">
-          <span>{mode === 'ap' ? '相机 Wi-Fi 密码' : 'Wi-Fi 密码（可选）'}</span>
+          <span>{mode === 'ap' ? '相机 Wi-Fi 密码' : '手机热点/Wi-Fi 密码（可选）'}</span>
           <input
             value={wifiPassword}
             onChange={(event) => setWifiPassword(event.target.value)}
@@ -358,7 +365,7 @@ export function App() {
           <div className="empty-state">
             {connection ? <Image size={44} /> : <WifiOff size={44} />}
             <h3>{connection ? '相机里暂时没有可下载照片' : '请先连接相机'}</h3>
-            <p>{connection ? '点击刷新按钮重新读取相机照片。' : '回到连接相机页面，输入相机 IP 和 Wi-Fi 密码后连接。'}</p>
+            <p>{connection ? '点击刷新按钮重新读取相机照片。' : '回到连接相机页面，连接相机热点或使用 STA 自动发现后再下载。'}</p>
           </div>
         ) : (
           <div className="photo-grid">
