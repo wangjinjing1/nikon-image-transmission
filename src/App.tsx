@@ -81,6 +81,10 @@ export function App() {
       setMessage(`${nextConnection.cameraName ?? profile.name} 已连接，正在读取照片。`);
       await refreshPhotos();
     } catch (error) {
+      if (mode === 'sta' && connectionHost) {
+        setHost('');
+        saveConnectionSettings({ model, mode, host: '' });
+      }
       setMessage(error instanceof Error ? error.message : '连接失败，请确认手机已连接相机 Wi-Fi。');
     } finally {
       setBusy(null);
@@ -292,7 +296,7 @@ export function App() {
         {mode === 'ap' ? (
           <div className="ap-hint">
             <strong>AP 模式会自动检测相机地址</strong>
-            <span>请先在手机系统 Wi-Fi 中连接相机热点，APP 会读取当前热点网关并连接相机。</span>
+            <span>请先在手机系统 Wi-Fi 中连接相机热点，APP 会自动扫描当前热点里的尼康 PTP/IP 服务。</span>
           </div>
         ) : (
           <div className="sta-connect-block">

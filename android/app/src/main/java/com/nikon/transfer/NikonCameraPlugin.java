@@ -20,6 +20,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.Socket;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -54,17 +56,29 @@ public class NikonCameraPlugin extends Plugin {
 
         executor.execute(() -> {
             try {
-                String targetHost = detectTargetAddress(mode, host, port);
+                String manualHost = host == null ? "" : host.trim();
+                String targetHost = detectTargetAddress(mode, manualHost, port);
                 if (targetHost.isEmpty()) {
-                    throw new IllegalStateException(
-                            "sta".equals(mode)
-                                    ? "STA 模式未发现相机，请确认相机已连接手机热点或同一 Wi-Fi；如仍失败，请手动填写相机 IP。"
-                                    : "AP 模式未检测到相机热点网关，请确认手机已连接相机 Wi-Fi。"
-                    );
+                    throw new IllegalStateException(discoveryFailedMessage(mode));
                 }
 
-                client = new NikonPtpIpClient(targetHost, port);
-                NikonPtpIpClient.Session session = client.connect(model);
+                NikonPtpIpClient.Session session;
+                try {
+                    client = new NikonPtpIpClient(targetHost, port);
+                    session = client.connect(model);
+                } catch (Exception firstException) {
+                    closeClient();
+                    String fallbackHost = "";
+                    if (!manualHost.isEmpty() || isConnectionRefused(firstException)) {
+                        fallbackHost = discoverCameraAddress(port);
+                    }
+                    if (fallbackHost.isEmpty() || fallbackHost.equals(targetHost)) {
+                        throw firstException;
+                    }
+                    targetHost = fallbackHost;
+                    client = new NikonPtpIpClient(targetHost, port);
+                    session = client.connect(model);
+                }
 
                 JSObject result = new JSObject();
                 result.put("connected", true);
@@ -76,7 +90,7 @@ public class NikonCameraPlugin extends Plugin {
                 result.put("sessionId", session.sessionId);
                 call.resolve(result);
             } catch (Exception exception) {
-                call.reject(exception.getMessage() == null ? "无法连接相机，请确认手机已连接相机 Wi-Fi。" : exception.getMessage(), exception);
+                call.reject(connectErrorMessage(mode, exception), exception);
             }
         });
     }
@@ -142,8 +156,7 @@ public class NikonCameraPlugin extends Plugin {
     public void disconnect(PluginCall call) {
         executor.execute(() -> {
             if (client != null) {
-                client.close();
-                client = null;
+                closeClient();
             }
             JSObject result = new JSObject();
             result.put("connected", false);
@@ -163,15 +176,23 @@ public class NikonCameraPlugin extends Plugin {
     }
 
     private String detectTargetAddress(String mode, String host, int port) {
-        if (host != null && !host.trim().isEmpty()) {
-            return host.trim();
+        if (host != null && !host.isEmpty()) {
+            return host;
         }
 
-        if ("sta".equals(mode)) {
-            return discoverStaCameraAddress(port);
+        String discoveredHost = discoverCameraAddress(port);
+        if (!discoveredHost.isEmpty()) {
+            return discoveredHost;
         }
 
         return detectGatewayAddress();
+    }
+
+    private void closeClient() {
+        if (client != null) {
+            client.close();
+            client = null;
+        }
     }
 
     private String detectGatewayAddress() {
@@ -188,7 +209,7 @@ public class NikonCameraPlugin extends Plugin {
         return Formatter.formatIpAddress(dhcpInfo.gateway);
     }
 
-    private String discoverStaCameraAddress(int port) {
+    private String discoverCameraAddress(int port) {
         WifiManager wifiManager = (WifiManager) getContext().getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
         if (wifiManager == null) {
             return "";
@@ -243,6 +264,39 @@ public class NikonCameraPlugin extends Plugin {
         }
 
         return "";
+    }
+
+    private boolean isConnectionRefused(Exception exception) {
+        Throwable current = exception;
+        while (current != null) {
+            if (current instanceof ConnectException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        String message = exception.getMessage();
+        return message != null && message.toLowerCase().contains("connection refused");
+    }
+
+    private String discoveryFailedMessage(String mode) {
+        if ("sta".equals(mode)) {
+            return "未发现相机服务。请确认相机已连接手机热点或同一 Wi-Fi，并在相机菜单中启用“连接至智能设备/PC 传输”后再试。";
+        }
+        return "未发现相机服务。请确认手机已连接相机 Wi-Fi 热点，并在相机无线连接菜单中启用连接。";
+    }
+
+    private String connectErrorMessage(String mode, Exception exception) {
+        if (isConnectionRefused(exception)) {
+            return "已找到网络地址，但相机拒绝连接 PTP/IP 服务。请在相机菜单中启用无线传输/连接至智能设备，保持相机停留在等待连接界面后重试。";
+        }
+        if (exception instanceof SocketTimeoutException) {
+            return "连接相机超时。请确认手机和相机在同一网络，且相机无线传输服务已开启。";
+        }
+        String message = exception.getMessage();
+        if (message == null || message.trim().isEmpty() || message.contains("failed to connect to /")) {
+            return discoveryFailedMessage(mode);
+        }
+        return message;
     }
 
     private List<String> buildScanCandidates(int network, int ownIp, int gateway) {
