@@ -115,6 +115,11 @@ button:disabled {
   background: #f7f4ea;
 }
 
+.top-settings-action.active {
+  color: #111315;
+  background: #f7f4ea;
+}
+
 .page-panel {
   min-height: 0;
   overflow: hidden;
@@ -483,10 +488,33 @@ h2 {
 
 .download-page-action {
   width: 100%;
-  min-height: 44px;
+  min-height: 48px;
   margin-top: 0;
   padding: 0 14px;
   font-size: 0.94rem;
+}
+
+.settings-view {
+  background:
+    linear-gradient(120deg, rgba(215, 25, 42, 0.1), transparent 44%),
+    radial-gradient(circle at 78% 24%, rgba(238, 192, 89, 0.1), transparent 30%);
+}
+
+.settings-rail {
+  justify-content: start;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.compact-button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
 }
 
 .settings-panel {

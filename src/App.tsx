@@ -20,7 +20,7 @@ import type { CameraConnection, CameraModel, CameraPhoto, ConnectionMode, Downlo
 
 const cameraClient = new NikonCameraClient();
 
-type ActiveView = 'connect' | 'download';
+type ActiveView = 'connect' | 'download' | 'settings';
 
 interface SavedConnectionSettings {
   model?: CameraModel;
@@ -34,6 +34,10 @@ function loadConnectionSettings(): SavedConnectionSettings {
   } catch {
     return {};
   }
+}
+
+function saveConnectionSettings(settings: SavedConnectionSettings) {
+  window.localStorage.setItem('connectionSettings', JSON.stringify(settings));
 }
 
 export function App() {
@@ -51,10 +55,9 @@ export function App() {
   const [connection, setConnection] = useState<CameraConnection | null>(null);
   const [photos, setPhotos] = useState<CameraPhoto[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [busy, setBusy] = useState<'connect' | 'refresh' | 'download' | 'capture' | null>(null);
+  const [busy, setBusy] = useState<'connect' | 'refresh' | 'download' | null>(null);
   const [message, setMessage] = useState('请选择相机并连接 Wi-Fi。');
   const [jobs, setJobs] = useState<DownloadJob[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
   const [albumName, setAlbumName] = useState(() => window.localStorage.getItem('downloadAlbumName') ?? '尼康图传');
 
   const profile = cameraProfiles.find((item) => item.id === model) ?? cameraProfiles[0];
@@ -74,7 +77,7 @@ export function App() {
     try {
       const nextConnection = await cameraClient.connect(model, mode, connectionHost);
       setConnection(nextConnection);
-      window.localStorage.setItem('connectionSettings', JSON.stringify({ model, mode, host: connectionHost }));
+      saveConnectionSettings({ model, mode, host: connectionHost });
       setMessage(`${nextConnection.cameraName ?? profile.name} 已连接，正在读取照片。`);
       await refreshPhotos();
     } catch (error) {
@@ -160,16 +163,24 @@ export function App() {
 
   function updateModel(nextModel: CameraModel) {
     const nextProfile = cameraProfiles.find((item) => item.id === nextModel) ?? cameraProfiles[0];
+    const nextMode = nextProfile.supportedModes.includes(mode) ? mode : nextProfile.supportedModes[0];
+    const nextHost = nextMode === 'ap' ? '' : host;
     setModel(nextModel);
-    setMode(nextProfile.supportedModes[0]);
-    setHost(nextProfile.defaultHost);
+    setMode(nextMode);
+    setHost(nextHost);
+    saveConnectionSettings({ model: nextModel, mode: nextMode, host: nextHost });
   }
 
   function updateMode(nextMode: ConnectionMode) {
+    const nextHost = nextMode === 'ap' ? '' : host;
     setMode(nextMode);
-    if (nextMode === 'ap') {
-      setHost('');
-    }
+    setHost(nextHost);
+    saveConnectionSettings({ model, mode: nextMode, host: nextHost });
+  }
+
+  function updateHost(nextHost: string) {
+    setHost(nextHost);
+    saveConnectionSettings({ model, mode, host: nextHost.trim() });
   }
 
   function toggleSelection(handle: number) {
@@ -226,7 +237,11 @@ export function App() {
           </button>
         </nav>
 
-        <button className="top-settings-action" onClick={() => setShowSettings((current) => !current)} title="设置">
+        <button
+          className={`top-settings-action ${activeView === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveView('settings')}
+          title="设置"
+        >
           <Settings size={18} />
         </button>
       </header>
@@ -287,7 +302,7 @@ export function App() {
             </div>
             <label className="field">
               <span>手动 IP 地址（可选）</span>
-              <input value={host} onChange={(event) => setHost(event.target.value)} placeholder="发现失败时填写，例如 192.168.43.23" />
+              <input value={host} onChange={(event) => updateHost(event.target.value)} placeholder="发现失败时填写，例如 192.168.43.23" />
             </label>
           </div>
         )}
@@ -316,7 +331,21 @@ export function App() {
             {connection ? '查看/下载照片' : '连接后查看照片'}
           </button>
 
-        {showSettings ? (
+        </div>
+      </section>
+
+      <section className={`page-panel settings-view ${activeView === 'settings' ? 'active' : ''}`} hidden={activeView !== 'settings'}>
+        <div className="control-rail settings-rail">
+          <div className="settings-header">
+            <div>
+              <p className="eyebrow">Settings</p>
+              <h2>设置</h2>
+            </div>
+            <button className="secondary-action compact-button" onClick={() => setActiveView('connect')}>
+              返回连接
+            </button>
+          </div>
+
           <div className="settings-panel">
             <label className="field">
               <span>下载目录</span>
@@ -333,7 +362,6 @@ export function App() {
             </label>
             <p>默认保存到手机 Pictures 目录下的这个文件夹。</p>
           </div>
-        ) : null}
         </div>
       </section>
 
