@@ -1,0 +1,508 @@
+:root {
+  color: #f7f4ea;
+  background: #111315;
+  font-family:
+    "Aptos",
+    "Segoe UI",
+    "Microsoft YaHei",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    linear-gradient(120deg, rgba(191, 29, 45, 0.22), transparent 34%),
+    radial-gradient(circle at 85% 20%, rgba(238, 192, 89, 0.18), transparent 26%),
+    #111315;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.control-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 28px;
+  border-right: 1px solid rgba(247, 244, 234, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(17, 19, 21, 0.84);
+  backdrop-filter: blur(24px);
+}
+
+.brand-lockup,
+.status-panel,
+.button-row,
+.toolbar,
+.toolbar-actions,
+.download-strip,
+.queue-row {
+  display: flex;
+  align-items: center;
+}
+
+.brand-lockup {
+  gap: 14px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(247, 244, 234, 0.22);
+  border-radius: 8px;
+  background: #d7192a;
+  box-shadow: 0 18px 50px rgba(215, 25, 42, 0.24);
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #eec059;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.8rem, 2.8vw, 2.7rem);
+  line-height: 1;
+}
+
+h2 {
+  font-size: 1.8rem;
+}
+
+.status-panel {
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(247, 244, 234, 0.14);
+  border-radius: 8px;
+  background: rgba(247, 244, 234, 0.06);
+}
+
+.status-panel strong,
+.status-panel span {
+  display: block;
+}
+
+.status-panel span {
+  margin-top: 4px;
+  color: rgba(247, 244, 234, 0.66);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.signal {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: #111315;
+  background: #8a8f90;
+}
+
+.signal.online {
+  background: #6ee7a8;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: rgba(247, 244, 234, 0.7);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid rgba(247, 244, 234, 0.14);
+  border-radius: 8px;
+  color: #f7f4ea;
+  background: rgba(0, 0, 0, 0.2);
+  outline: none;
+}
+
+.field input {
+  padding: 0 14px;
+}
+
+.field select {
+  appearance: none;
+  padding: 0 42px 0 14px;
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-wrap svg {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.segmented,
+.size-picker {
+  display: grid;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid rgba(247, 244, 234, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.segmented {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.size-picker {
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  min-width: min(360px, 100%);
+}
+
+.segmented button,
+.size-picker button,
+.toolbar-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(247, 244, 234, 0.76);
+  background: transparent;
+  font-weight: 800;
+}
+
+.segmented .active,
+.size-picker .active {
+  color: #111315;
+  background: #f7f4ea;
+}
+
+.profile-note {
+  color: rgba(247, 244, 234, 0.58);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.button-row {
+  gap: 10px;
+  margin-top: auto;
+}
+
+.primary-action,
+.secondary-action,
+.download-action,
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 900;
+}
+
+.primary-action,
+.download-action {
+  flex: 1;
+  color: #fff;
+  background: #d7192a;
+  box-shadow: 0 18px 42px rgba(215, 25, 42, 0.24);
+}
+
+.secondary-action,
+.icon-action,
+.toolbar-actions button {
+  color: #f7f4ea;
+  border: 1px solid rgba(247, 244, 234, 0.14);
+  background: rgba(247, 244, 234, 0.07);
+}
+
+.secondary-action {
+  flex: 1;
+}
+
+.icon-action {
+  width: 48px;
+}
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 28px;
+  min-width: 0;
+}
+
+.toolbar {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.toolbar-actions {
+  gap: 8px;
+}
+
+.toolbar-actions button {
+  padding: 0 14px;
+}
+
+.download-strip {
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid rgba(247, 244, 234, 0.12);
+  border-radius: 8px;
+  background: rgba(247, 244, 234, 0.05);
+}
+
+.download-action {
+  flex: 0 0 auto;
+  padding: 0 20px;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  min-height: 420px;
+  border: 1px dashed rgba(247, 244, 234, 0.18);
+  border-radius: 8px;
+  color: rgba(247, 244, 234, 0.7);
+  text-align: center;
+}
+
+.empty-state h3 {
+  color: #f7f4ea;
+}
+
+.empty-state p {
+  max-width: 420px;
+  line-height: 1.6;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.photo-card {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(247, 244, 234, 0.12);
+  border-radius: 8px;
+  color: #f7f4ea;
+  background: rgba(247, 244, 234, 0.06);
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.photo-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(238, 192, 89, 0.6);
+}
+
+.photo-card.selected {
+  border-color: #eec059;
+  background: rgba(238, 192, 89, 0.13);
+}
+
+.photo-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #232629;
+}
+
+.photo-card strong,
+.photo-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photo-card small {
+  color: rgba(247, 244, 234, 0.58);
+}
+
+.check-dot,
+.format-badge {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.check-dot {
+  left: 14px;
+  top: 14px;
+  color: #111315;
+  background: #eec059;
+}
+
+.format-badge {
+  right: 14px;
+  top: 14px;
+  padding: 0 8px;
+  color: #111315;
+  background: rgba(247, 244, 234, 0.92);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.download-queue {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(247, 244, 234, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.queue-row {
+  grid-template-columns: minmax(0, 190px) minmax(100px, 1fr) 40px;
+  gap: 10px;
+  font-size: 0.86rem;
+}
+
+.queue-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-row b {
+  font-size: 0.78rem;
+  color: rgba(247, 244, 234, 0.64);
+}
+
+.progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(247, 244, 234, 0.12);
+}
+
+.progress-track div {
+  height: 100%;
+  border-radius: inherit;
+  background: #6ee7a8;
+  transition: width 220ms ease;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .control-rail {
+    border-right: 0;
+    border-bottom: 1px solid rgba(247, 244, 234, 0.12);
+  }
+
+  .button-row {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .control-rail,
+  .workspace {
+    padding: 18px;
+  }
+
+  .toolbar,
+  .download-strip {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar-actions {
+    justify-content: stretch;
+  }
+
+  .toolbar-actions button,
+  .download-action {
+    flex: 1;
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .queue-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}

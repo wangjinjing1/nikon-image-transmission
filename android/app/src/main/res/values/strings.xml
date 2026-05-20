@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">尼康图传</string>
+    <string name="title_activity_main">尼康图传</string>
+    <string name="package_name">com.nikon.transfer</string>
+    <string name="custom_url_scheme">com.nikon.transfer</string>
+</resources>
