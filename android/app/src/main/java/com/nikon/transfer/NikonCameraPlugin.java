@@ -293,6 +293,9 @@ public class NikonCameraPlugin extends Plugin {
             return "连接相机超时。请确认手机和相机在同一网络，且相机无线传输服务已开启。";
         }
         String message = exception.getMessage();
+        if (message != null && message.toLowerCase().contains("connection reset")) {
+            return "相机已接受连接但随后主动断开。请确认 SnapBridge 授权已完成，并让相机停留在无线传输等待连接界面后重试。";
+        }
         if (message == null || message.trim().isEmpty() || message.contains("failed to connect to /")) {
             return discoveryFailedMessage(mode);
         }

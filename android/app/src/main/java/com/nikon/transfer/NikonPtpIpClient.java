@@ -71,7 +71,7 @@ final class NikonPtpIpClient implements Closeable {
 
         sendInitCommandRequest(model);
         readInitAck();
-        command(OP_OPEN_SESSION, new int[]{sessionId});
+        commandAndWait(OP_OPEN_SESSION, new int[]{sessionId});
         readDeviceInfo(model);
         return new Session(sessionId, cameraName, serialNumber);
     }
@@ -171,11 +171,38 @@ final class NikonPtpIpClient implements Closeable {
                 if (packet.type == PTPIP_END_DATA_PACKET) {
                     break;
                 }
-            } else if (packet.type == PTPIP_COMMAND_RESPONSE) {
+            } else if (packet.type == PTPIP_COMMAND_RESPONSE && isSuccessResponse(packet, currentTransaction)) {
                 break;
             }
         }
         return data.toByteArray();
+    }
+
+    private void commandAndWait(int opCode, int[] params) throws IOException {
+        int currentTransaction = command(opCode, params);
+        while (true) {
+            Packet packet = readPacket();
+            if (packet.type == PTPIP_COMMAND_RESPONSE && isSuccessResponse(packet, currentTransaction)) {
+                return;
+            }
+        }
+    }
+
+    private boolean isSuccessResponse(Packet packet, int expectedTransaction) throws IOException {
+        ByteBuffer buffer = packet.payload();
+        if (buffer.remaining() < 6) {
+            throw new IOException("相机返回了无效的 PTP/IP 响应。");
+        }
+
+        int responseCode = Short.toUnsignedInt(buffer.getShort());
+        int transaction = buffer.getInt();
+        if (transaction != expectedTransaction) {
+            return false;
+        }
+        if (responseCode != 0x2001) {
+            throw new IOException("相机拒绝了 PTP/IP 指令，响应代码：" + Integer.toHexString(responseCode));
+        }
+        return true;
     }
 
     private int command(int opCode, int[] params) throws IOException {
