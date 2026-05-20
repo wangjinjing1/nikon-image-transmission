@@ -8,6 +8,7 @@ import {
   Loader2,
   RadioTower,
   RefreshCw,
+  Settings,
   Smartphone,
   Wifi,
   WifiOff
@@ -30,6 +31,8 @@ export function App() {
   const [busy, setBusy] = useState<'connect' | 'refresh' | 'download' | null>(null);
   const [message, setMessage] = useState('请选择相机并连接 Wi-Fi。');
   const [jobs, setJobs] = useState<DownloadJob[]>([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [albumName, setAlbumName] = useState(() => window.localStorage.getItem('downloadAlbumName') ?? '尼康图传');
 
   const profile = cameraProfiles.find((item) => item.id === model) ?? cameraProfiles[0];
   const selectedPhotos = useMemo(() => photos.filter((photo) => selected.has(photo.objectHandle)), [photos, selected]);
@@ -80,6 +83,16 @@ export function App() {
     }
 
     const objectHandles = selectedPhotos.map((photo) => photo.objectHandle);
+    const targetAlbum = sanitizeAlbumName(albumName);
+    setAlbumName(targetAlbum);
+    window.localStorage.setItem('downloadAlbumName', targetAlbum);
+
+    const permission = await cameraClient.requestStoragePermission();
+    if (permission !== 'granted') {
+      setMessage('没有获得文件/照片保存权限，请允许后再下载。');
+      return;
+    }
+
     setBusy('download');
     setJobs(
       selectedPhotos.map((photo) => ({
@@ -89,10 +102,10 @@ export function App() {
         status: 'queued'
       }))
     );
-    setMessage(`正在下载 ${selectedPhotos.length} 张照片，尺寸：${downloadSizeLabel[size]}。`);
+    setMessage(`正在后台下载 ${selectedPhotos.length} 张照片，尺寸：${downloadSizeLabel[size]}。可继续浏览照片或切到其他应用。`);
 
     try {
-      const saved = await cameraClient.downloadPhotos(objectHandles, size, (done, total) => {
+      const saved = await cameraClient.downloadPhotos(objectHandles, size, targetAlbum, (done, total) => {
         setJobs((current) =>
           current.map((job, index) => ({
             ...job,
@@ -103,7 +116,7 @@ export function App() {
         setMessage(`下载进度 ${done}/${total}`);
       });
       setJobs((current) => current.map((job) => ({ ...job, status: 'done', progress: 100 })));
-      setMessage(`已保存 ${saved} 张照片到手机相册。`);
+      setMessage(`已保存 ${saved} 张照片到 Pictures/${targetAlbum}。`);
     } catch (error) {
       setJobs((current) =>
         current.map((job) => (job.status === 'done' ? job : { ...job, status: 'failed', message: '下载失败' }))
@@ -211,7 +224,29 @@ export function App() {
           <button className="icon-action" disabled={!connection || busy === 'refresh'} onClick={refreshPhotos} title="刷新">
             {busy === 'refresh' ? <Loader2 className="spin" size={18} /> : <RefreshCw size={18} />}
           </button>
+          <button className="icon-action" onClick={() => setShowSettings((current) => !current)} title="设置">
+            <Settings size={18} />
+          </button>
         </div>
+
+        {showSettings ? (
+          <div className="settings-panel">
+            <label className="field">
+              <span>下载目录</span>
+              <input
+                value={albumName}
+                onChange={(event) => setAlbumName(event.target.value)}
+                onBlur={() => {
+                  const nextAlbumName = sanitizeAlbumName(albumName);
+                  setAlbumName(nextAlbumName);
+                  window.localStorage.setItem('downloadAlbumName', nextAlbumName);
+                }}
+                placeholder="尼康图传"
+              />
+            </label>
+            <p>默认保存到手机 Pictures 目录下的这个文件夹。</p>
+          </div>
+        ) : null}
       </section>
 
       <section className="workspace">
@@ -232,6 +267,10 @@ export function App() {
         </header>
 
         <div className="download-strip">
+          <div className="download-meta">
+            <strong>{selected.size} 张已选择</strong>
+            <span>保存到 Pictures/{sanitizeAlbumName(albumName)}</span>
+          </div>
           <div className="size-picker">
             {(Object.keys(downloadSizeLabel) as DownloadSize[]).map((item) => (
               <button key={item} className={size === item ? 'active' : ''} onClick={() => setSize(item)}>
@@ -291,4 +330,9 @@ export function App() {
 
 function formatMegabytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function sanitizeAlbumName(value: string) {
+  const cleaned = value.replace(/[\\/:*?"<>|]/g, '').trim();
+  return cleaned.length > 0 ? cleaned : '尼康图传';
 }

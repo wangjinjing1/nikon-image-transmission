@@ -4,7 +4,8 @@ import type { CameraConnection, CameraModel, CameraPhoto, ConnectionMode, Downlo
 interface NikonCameraPlugin {
   connect(options: { model: CameraModel; mode: ConnectionMode; host: string; port?: number }): Promise<CameraConnection>;
   listPhotos(): Promise<{ photos: CameraPhoto[] }>;
-  downloadPhotos(options: { objectHandles: number[]; size: DownloadSize }): Promise<{ saved: number }>;
+  requestStoragePermission(): Promise<{ storage: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' }>;
+  downloadPhotos(options: { objectHandles: number[]; size: DownloadSize; albumName: string }): Promise<{ saved: number }>;
   disconnect(): Promise<{ connected: boolean }>;
 }
 
@@ -120,7 +121,22 @@ export class NikonCameraClient {
     return photos;
   }
 
-  async downloadPhotos(objectHandles: number[], size: DownloadSize, onProgress: (done: number, total: number) => void) {
+  async requestStoragePermission() {
+    if (this.demoMode) {
+      await wait(150);
+      return 'granted';
+    }
+
+    const result = await NativeNikonCamera.requestStoragePermission();
+    return result.storage;
+  }
+
+  async downloadPhotos(
+    objectHandles: number[],
+    size: DownloadSize,
+    albumName: string,
+    onProgress: (done: number, total: number) => void
+  ) {
     if (this.demoMode) {
       for (let index = 0; index < objectHandles.length; index += 1) {
         await wait(450);
@@ -129,7 +145,7 @@ export class NikonCameraClient {
       return objectHandles.length;
     }
 
-    const { saved } = await NativeNikonCamera.downloadPhotos({ objectHandles, size });
+    const { saved } = await NativeNikonCamera.downloadPhotos({ objectHandles, size, albumName });
     onProgress(saved, objectHandles.length);
     return saved;
   }

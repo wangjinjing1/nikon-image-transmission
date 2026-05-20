@@ -1,18 +1,28 @@
 package com.nikon.transfer;
 
+import android.Manifest;
+import android.os.Build;
+
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@CapacitorPlugin(name = "NikonCamera")
+@CapacitorPlugin(
+        name = "NikonCamera",
+        permissions = {
+                @Permission(strings = { Manifest.permission.WRITE_EXTERNAL_STORAGE }, alias = "storage")
+        }
+)
 public class NikonCameraPlugin extends Plugin {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private NikonPtpIpClient client;
@@ -44,6 +54,18 @@ public class NikonCameraPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void requestStoragePermission(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || getPermissionState("storage") == PermissionState.GRANTED) {
+            JSObject result = new JSObject();
+            result.put("storage", "granted");
+            call.resolve(result);
+            return;
+        }
+
+        requestPermissionForAlias("storage", call, "checkPermissions");
+    }
+
+    @PluginMethod
     public void listPhotos(PluginCall call) {
         executor.execute(() -> {
             try {
@@ -67,6 +89,7 @@ public class NikonCameraPlugin extends Plugin {
     public void downloadPhotos(PluginCall call) {
         JSArray handles = call.getArray("objectHandles", new JSArray());
         String size = call.getString("size", "original");
+        String albumName = sanitizeAlbumName(call.getString("albumName", "尼康图传"));
 
         executor.execute(() -> {
             try {
@@ -76,9 +99,10 @@ public class NikonCameraPlugin extends Plugin {
                     objectHandles.add(handles.getInt(index));
                 }
 
-                int saved = client.downloadPhotos(getContext(), objectHandles, size);
+                int saved = client.downloadPhotos(getContext(), objectHandles, size, albumName);
                 JSObject result = new JSObject();
                 result.put("saved", saved);
+                result.put("albumName", albumName);
                 call.resolve(result);
             } catch (Exception exception) {
                 call.reject("下载照片失败", exception);
@@ -103,5 +127,10 @@ public class NikonCameraPlugin extends Plugin {
         if (client == null || !client.isConnected()) {
             throw new IllegalStateException("相机未连接");
         }
+    }
+
+    private String sanitizeAlbumName(String value) {
+        String cleaned = value == null ? "" : value.replaceAll("[\\\\/:*?\"<>|]", "").trim();
+        return cleaned.isEmpty() ? "尼康图传" : cleaned;
     }
 }

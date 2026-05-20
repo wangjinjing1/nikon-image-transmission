@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
 
@@ -14,6 +15,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -105,7 +108,7 @@ final class NikonPtpIpClient implements Closeable {
         return photos;
     }
 
-    int downloadPhotos(Context context, List<Integer> objectHandles, String size) throws IOException {
+    int downloadPhotos(Context context, List<Integer> objectHandles, String size, String albumName) throws IOException {
         int saved = 0;
         for (Integer handle : objectHandles) {
             ObjectInfo info = readObjectInfo(handle);
@@ -119,7 +122,7 @@ final class NikonPtpIpClient implements Closeable {
                 filename = filename.replaceAll("\\.[^.]+$", "") + "_" + size.toUpperCase(Locale.US) + ".jpg";
             }
 
-            saveImage(context, filename, mimeType, outputBytes);
+            saveImage(context, filename, mimeType, outputBytes, albumName);
             saved += 1;
         }
         return saved;
@@ -235,15 +238,25 @@ final class NikonPtpIpClient implements Closeable {
         return output.toByteArray();
     }
 
-    private static void saveImage(Context context, String filename, String mimeType, byte[] bytes) throws IOException {
+    private static void saveImage(Context context, String filename, String mimeType, byte[] bytes, String albumName) throws IOException {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            File pictures = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+            File directory = new File(pictures, albumName);
+            if (!directory.exists() && !directory.mkdirs()) {
+                throw new IOException("Could not create download directory: " + directory);
+            }
+            try (OutputStream stream = new FileOutputStream(new File(directory, filename))) {
+                stream.write(bytes);
+            }
+            return;
+        }
+
         ContentResolver resolver = context.getContentResolver();
         ContentValues values = new ContentValues();
         values.put(MediaStore.Images.Media.DISPLAY_NAME, filename);
         values.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/尼康图传");
-            values.put(MediaStore.Images.Media.IS_PENDING, 1);
-        }
+        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/" + albumName);
+        values.put(MediaStore.Images.Media.IS_PENDING, 1);
 
         Uri uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
         if (uri == null) {
@@ -257,11 +270,9 @@ final class NikonPtpIpClient implements Closeable {
             stream.write(bytes);
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.clear();
-            values.put(MediaStore.Images.Media.IS_PENDING, 0);
-            resolver.update(uri, values, null, null);
-        }
+        values.clear();
+        values.put(MediaStore.Images.Media.IS_PENDING, 0);
+        resolver.update(uri, values, null, null);
     }
 
     private static String targetFilename(String filename, String size) {

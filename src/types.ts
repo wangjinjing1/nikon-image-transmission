@@ -41,3 +41,9 @@ export interface DownloadJob {
   status: 'queued' | 'running' | 'done' | 'failed';
   message?: string;
 }
+
+export interface DownloadOptions {
+  objectHandles: number[];
+  size: DownloadSize;
+  albumName: string;
+}

@@ -298,17 +298,58 @@ h2 {
 }
 
 .download-strip {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   justify-content: space-between;
   gap: 14px;
   padding: 12px;
   border: 1px solid rgba(247, 244, 234, 0.12);
   border-radius: 8px;
-  background: rgba(247, 244, 234, 0.05);
+  background:
+    linear-gradient(180deg, rgba(17, 19, 21, 0.96), rgba(17, 19, 21, 0.88)),
+    rgba(247, 244, 234, 0.05);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.download-meta {
+  display: grid;
+  flex: 0 0 auto;
+  min-width: 168px;
+  gap: 4px;
+}
+
+.download-meta strong,
+.download-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-meta span {
+  color: rgba(247, 244, 234, 0.58);
+  font-size: 0.82rem;
 }
 
 .download-action {
   flex: 0 0 auto;
   padding: 0 20px;
+}
+
+.settings-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(247, 244, 234, 0.12);
+  border-radius: 8px;
+  background: rgba(247, 244, 234, 0.06);
+}
+
+.settings-panel p {
+  color: rgba(247, 244, 234, 0.58);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .empty-state {
@@ -486,6 +527,14 @@ h2 {
   .download-strip {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .download-strip {
+    top: 0;
+  }
+
+  .download-meta {
+    min-width: 0;
   }
 
   .toolbar-actions {
