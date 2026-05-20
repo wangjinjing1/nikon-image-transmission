@@ -1,7 +1,10 @@
 package com.nikon.transfer;
 
 import android.Manifest;
+import android.net.DhcpInfo;
+import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.text.format.Formatter;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -37,19 +40,24 @@ public class NikonCameraPlugin extends Plugin {
 
         executor.execute(() -> {
             try {
-                client = new NikonPtpIpClient(host, port);
+                String targetHost = host == null || host.trim().isEmpty() ? detectGatewayAddress() : host.trim();
+                if (targetHost.isEmpty()) {
+                    throw new IllegalStateException("AP 模式未检测到相机热点网关，请确认手机已连接相机 Wi-Fi。");
+                }
+
+                client = new NikonPtpIpClient(targetHost, port);
                 NikonPtpIpClient.Session session = client.connect(model);
 
                 JSObject result = new JSObject();
                 result.put("connected", true);
                 result.put("model", model);
                 result.put("mode", mode);
-                result.put("host", host);
+                result.put("host", targetHost);
                 result.put("cameraName", session.cameraName);
                 result.put("sessionId", session.sessionId);
                 call.resolve(result);
             } catch (Exception exception) {
-                call.reject("无法连接相机，请确认手机已连接相机 Wi-Fi，地址为 " + host, exception);
+                call.reject("无法连接相机，请确认手机已连接相机 Wi-Fi。", exception);
             }
         });
     }
@@ -133,5 +141,19 @@ public class NikonCameraPlugin extends Plugin {
     private String sanitizeAlbumName(String value) {
         String cleaned = value == null ? "" : value.replaceAll("[\\\\/:*?\"<>|]", "").trim();
         return cleaned.isEmpty() ? "尼康图传" : cleaned;
+    }
+
+    private String detectGatewayAddress() {
+        WifiManager wifiManager = (WifiManager) getContext().getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
+        if (wifiManager == null) {
+            return "";
+        }
+
+        DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
+        if (dhcpInfo == null || dhcpInfo.gateway == 0) {
+            return "";
+        }
+
+        return Formatter.formatIpAddress(dhcpInfo.gateway);
     }
 }

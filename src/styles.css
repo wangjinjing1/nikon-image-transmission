@@ -317,6 +317,25 @@ h2 {
   line-height: 1.6;
 }
 
+.ap-hint {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(238, 192, 89, 0.24);
+  border-radius: 8px;
+  background: rgba(238, 192, 89, 0.08);
+}
+
+.ap-hint strong {
+  color: #f7f4ea;
+}
+
+.ap-hint span {
+  color: rgba(247, 244, 234, 0.64);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
 .button-row {
   gap: 10px;
   margin-top: auto;

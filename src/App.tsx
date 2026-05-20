@@ -26,7 +26,7 @@ export function App() {
   const [activeView, setActiveView] = useState<ActiveView>('connect');
   const [model, setModel] = useState<CameraModel>('Z30');
   const [mode, setMode] = useState<ConnectionMode>('ap');
-  const [host, setHost] = useState('192.168.1.1');
+  const [host, setHost] = useState('');
   const [wifiPassword, setWifiPassword] = useState('');
   const [size, setSize] = useState<DownloadSize>('8mp');
   const [connection, setConnection] = useState<CameraConnection | null>(null);
@@ -41,10 +41,11 @@ export function App() {
   const profile = cameraProfiles.find((item) => item.id === model) ?? cameraProfiles[0];
   const selectedPhotos = useMemo(() => photos.filter((photo) => selected.has(photo.objectHandle)), [photos, selected]);
   const canUseSta = profile.supportedModes.includes('sta');
+  const connectionHost = mode === 'ap' ? '' : host.trim();
 
   async function connect() {
-    if (!host.trim()) {
-      setMessage('请输入相机 IP 地址。');
+    if (mode === 'sta' && !host.trim()) {
+      setMessage('请输入相机局域网 IP 地址。');
       return;
     }
 
@@ -54,9 +55,9 @@ export function App() {
     }
 
     setBusy('connect');
-    setMessage('正在连接相机 Wi-Fi 和 PTP/IP 服务...');
+    setMessage(mode === 'ap' ? '正在连接相机热点服务...' : '正在连接局域网相机服务...');
     try {
-      const nextConnection = await cameraClient.connect(model, mode, host.trim(), wifiPassword.trim());
+      const nextConnection = await cameraClient.connect(model, mode, connectionHost, wifiPassword.trim());
       setConnection(nextConnection);
       setMessage(`${nextConnection.cameraName ?? profile.name} 已连接，正在读取照片。`);
       await refreshPhotos();
@@ -148,6 +149,13 @@ export function App() {
     setHost(nextProfile.defaultHost);
   }
 
+  function updateMode(nextMode: ConnectionMode) {
+    setMode(nextMode);
+    if (nextMode === 'ap') {
+      setHost('');
+    }
+  }
+
   function toggleSelection(handle: number) {
     setSelected((current) => {
       const next = new Set(current);
@@ -230,20 +238,27 @@ export function App() {
         </label>
 
         <div className="segmented" aria-label="连接模式">
-          <button className={mode === 'ap' ? 'active' : ''} onClick={() => setMode('ap')}>
+          <button className={mode === 'ap' ? 'active' : ''} onClick={() => updateMode('ap')}>
             <Wifi size={17} />
             AP
           </button>
-          <button className={mode === 'sta' ? 'active' : ''} disabled={!canUseSta} onClick={() => setMode('sta')}>
+          <button className={mode === 'sta' ? 'active' : ''} disabled={!canUseSta} onClick={() => updateMode('sta')}>
             <RadioTower size={17} />
             STA
           </button>
         </div>
 
-        <label className="field">
-          <span>{mode === 'ap' ? '相机热点地址' : '相机局域网地址'}</span>
-          <input value={host} onChange={(event) => setHost(event.target.value)} placeholder="192.168.1.1" />
-        </label>
+        {mode === 'ap' ? (
+          <div className="ap-hint">
+            <strong>AP 模式会自动检测相机地址</strong>
+            <span>请先在手机系统 Wi-Fi 中连接相机热点，APP 会读取当前热点网关并连接相机。</span>
+          </div>
+        ) : (
+          <label className="field">
+            <span>相机局域网地址</span>
+            <input value={host} onChange={(event) => setHost(event.target.value)} placeholder="例如 192.168.0.23" />
+          </label>
+        )}
 
         <label className="field">
           <span>{mode === 'ap' ? '相机 Wi-Fi 密码' : 'Wi-Fi 密码（可选）'}</span>
