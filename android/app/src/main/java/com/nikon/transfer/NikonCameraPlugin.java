@@ -32,6 +32,7 @@ public class NikonCameraPlugin extends Plugin {
         String model = call.getString("model", "Z30");
         String mode = call.getString("mode", "ap");
         String host = call.getString("host", "192.168.1.1");
+        String wifiPassword = call.getString("wifiPassword", "");
         int port = call.getInt("port", 15740);
 
         executor.execute(() -> {

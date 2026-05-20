@@ -2,7 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { CameraConnection, CameraModel, CameraPhoto, ConnectionMode, DownloadSize } from './types';
 
 interface NikonCameraPlugin {
-  connect(options: { model: CameraModel; mode: ConnectionMode; host: string; port?: number }): Promise<CameraConnection>;
+  connect(options: { model: CameraModel; mode: ConnectionMode; host: string; wifiPassword?: string; port?: number }): Promise<CameraConnection>;
   listPhotos(): Promise<{ photos: CameraPhoto[] }>;
   requestStoragePermission(): Promise<{ storage: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' }>;
   downloadPhotos(options: { objectHandles: number[]; size: DownloadSize; albumName: string }): Promise<{ saved: number }>;
@@ -95,7 +95,7 @@ const demoPhotos: CameraPhoto[] = [
 export class NikonCameraClient {
   private demoMode = !Capacitor.isNativePlatform();
 
-  async connect(model: CameraModel, mode: ConnectionMode, host: string) {
+  async connect(model: CameraModel, mode: ConnectionMode, host: string, wifiPassword: string) {
     if (this.demoMode) {
       await wait(700);
       return {
@@ -108,7 +108,7 @@ export class NikonCameraClient {
       };
     }
 
-    return NativeNikonCamera.connect({ model, mode, host });
+    return NativeNikonCamera.connect({ model, mode, host, wifiPassword });
   }
 
   async listPhotos() {

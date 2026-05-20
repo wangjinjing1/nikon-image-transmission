@@ -123,6 +123,12 @@ button:disabled {
   overflow: auto;
 }
 
+.connect-panel {
+  background:
+    linear-gradient(120deg, rgba(215, 25, 42, 0.12), transparent 42%),
+    radial-gradient(circle at 78% 24%, rgba(238, 192, 89, 0.12), transparent 30%);
+}
+
 .brand-lockup,
 .status-panel,
 .button-row,
@@ -189,6 +195,10 @@ h2 {
   border: 1px solid rgba(247, 244, 234, 0.14);
   border-radius: 8px;
   background: rgba(247, 244, 234, 0.06);
+}
+
+.connect-panel .status-panel {
+  margin-top: auto;
 }
 
 .status-panel strong,
@@ -413,6 +423,13 @@ h2 {
 .download-action {
   flex: 0 0 auto;
   padding: 0 20px;
+}
+
+.download-page-action {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 4px;
+  font-size: 1rem;
 }
 
 .settings-panel {

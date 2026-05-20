@@ -27,6 +27,7 @@ export function App() {
   const [model, setModel] = useState<CameraModel>('Z30');
   const [mode, setMode] = useState<ConnectionMode>('ap');
   const [host, setHost] = useState('192.168.1.1');
+  const [wifiPassword, setWifiPassword] = useState('');
   const [size, setSize] = useState<DownloadSize>('8mp');
   const [connection, setConnection] = useState<CameraConnection | null>(null);
   const [photos, setPhotos] = useState<CameraPhoto[]>([]);
@@ -42,10 +43,20 @@ export function App() {
   const canUseSta = profile.supportedModes.includes('sta');
 
   async function connect() {
+    if (!host.trim()) {
+      setMessage('请输入相机 IP 地址。');
+      return;
+    }
+
+    if (mode === 'ap' && !wifiPassword.trim()) {
+      setMessage('请输入相机 Wi-Fi 密码后再连接。');
+      return;
+    }
+
     setBusy('connect');
-    setMessage('正在连接相机 PTP/IP 服务...');
+    setMessage('正在连接相机 Wi-Fi 和 PTP/IP 服务...');
     try {
-      const nextConnection = await cameraClient.connect(model, mode, host.trim());
+      const nextConnection = await cameraClient.connect(model, mode, host.trim(), wifiPassword.trim());
       setConnection(nextConnection);
       setMessage(`${nextConnection.cameraName ?? profile.name} 已连接，正在读取照片。`);
       await refreshPhotos();
@@ -157,6 +168,16 @@ export function App() {
     setSelected(new Set());
   }
 
+  function openDownloadView() {
+    if (!connection) {
+      setMessage('请先连接相机，再进入下载照片页面。');
+      setActiveView('connect');
+      return;
+    }
+
+    setActiveView('download');
+  }
+
   return (
     <main className="app-shell">
       <header className="app-topbar">
@@ -175,7 +196,7 @@ export function App() {
             <Wifi size={18} />
             连接相机
           </button>
-          <button className={activeView === 'download' ? 'active' : ''} onClick={() => setActiveView('download')}>
+          <button className={activeView === 'download' ? 'active' : ''} onClick={openDownloadView}>
             <Images size={18} />
             下载照片
           </button>
@@ -224,6 +245,16 @@ export function App() {
           <input value={host} onChange={(event) => setHost(event.target.value)} placeholder="192.168.1.1" />
         </label>
 
+        <label className="field">
+          <span>{mode === 'ap' ? '相机 Wi-Fi 密码' : 'Wi-Fi 密码（可选）'}</span>
+          <input
+            value={wifiPassword}
+            onChange={(event) => setWifiPassword(event.target.value)}
+            placeholder="请输入 Wi-Fi 密码"
+            type="password"
+          />
+        </label>
+
         <p className="profile-note">{profile.notes}</p>
 
         <div className="button-row">
@@ -246,9 +277,9 @@ export function App() {
           </button>
         </div>
 
-        <button className="download-page-action" disabled={!connection || photos.length === 0} onClick={() => setActiveView('download')}>
+        <button className="download-page-action" onClick={openDownloadView}>
           <Images size={18} />
-          下载照片
+          {connection ? '下载照片' : '请先连接相机'}
         </button>
 
         {showSettings ? (
@@ -310,9 +341,9 @@ export function App() {
 
         {photos.length === 0 ? (
           <div className="empty-state">
-            <Image size={44} />
-            <h3>连接相机后会显示照片缩略图</h3>
-            <p>Z30 使用 AP 模式，Z5II 可按拍摄环境选择 AP 或 STA 模式。</p>
+            {connection ? <Image size={44} /> : <WifiOff size={44} />}
+            <h3>{connection ? '相机里暂时没有可下载照片' : '请先连接相机'}</h3>
+            <p>{connection ? '点击刷新按钮重新读取相机照片。' : '回到连接相机页面，输入相机 IP 和 Wi-Fi 密码后连接。'}</p>
           </div>
         ) : (
           <div className="photo-grid">
