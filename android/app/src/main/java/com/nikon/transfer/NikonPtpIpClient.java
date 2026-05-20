@@ -40,11 +40,13 @@ final class NikonPtpIpClient implements Closeable {
     private static final int PTPIP_END_DATA_PACKET = 12;
 
     private static final int OP_OPEN_SESSION = 0x1002;
+    private static final int OP_GET_DEVICE_INFO = 0x1001;
     private static final int OP_GET_STORAGE_IDS = 0x1004;
     private static final int OP_GET_OBJECT_HANDLES = 0x1007;
     private static final int OP_GET_OBJECT_INFO = 0x1008;
     private static final int OP_GET_OBJECT = 0x1009;
     private static final int OP_GET_THUMB = 0x100A;
+    private static final int OP_INITIATE_CAPTURE = 0x100E;
 
     private final String host;
     private final int port;
@@ -54,6 +56,7 @@ final class NikonPtpIpClient implements Closeable {
     private int transactionId = 1;
     private int sessionId = 1;
     private String cameraName = "Nikon Camera";
+    private String serialNumber = "";
 
     NikonPtpIpClient(String host, int port) {
         this.host = host;
@@ -70,7 +73,8 @@ final class NikonPtpIpClient implements Closeable {
         sendInitCommandRequest(model);
         readInitAck();
         command(OP_OPEN_SESSION, new int[]{sessionId});
-        return new Session(sessionId, cameraName);
+        readDeviceInfo(model);
+        return new Session(sessionId, cameraName, serialNumber);
     }
 
     boolean isConnected() {
@@ -128,6 +132,10 @@ final class NikonPtpIpClient implements Closeable {
         return saved;
     }
 
+    void capturePhoto() throws IOException {
+        commandAndWait(OP_INITIATE_CAPTURE, new int[]{0, 0});
+    }
+
     private List<Integer> readObjectHandles() throws IOException {
         byte[] storageBytes = readCommandData(OP_GET_STORAGE_IDS, new int[]{});
         List<Integer> storageIds = parseUInt32Array(storageBytes);
@@ -175,6 +183,31 @@ final class NikonPtpIpClient implements Closeable {
         return data.toByteArray();
     }
 
+    private void commandAndWait(int opCode, int[] params) throws IOException {
+        int currentTransaction = command(opCode, params);
+        while (true) {
+            Packet packet = readPacket();
+            if (packet.type != PTPIP_COMMAND_RESPONSE) {
+                continue;
+            }
+
+            ByteBuffer buffer = packet.payload();
+            if (buffer.remaining() < 10) {
+                throw new IOException("相机返回了无效的拍照响应。");
+            }
+
+            int responseCode = Short.toUnsignedInt(buffer.getShort());
+            int responseTransaction = buffer.getInt();
+            if (responseTransaction != currentTransaction) {
+                continue;
+            }
+            if (responseCode != 0x2001) {
+                throw new IOException("遥控拍照失败，相机响应代码：" + Integer.toHexString(responseCode));
+            }
+            return;
+        }
+    }
+
     private int command(int opCode, int[] params) throws IOException {
         int currentTransaction = transactionId++;
         ByteArrayOutputStream payload = new ByteArrayOutputStream();
@@ -197,6 +230,19 @@ final class NikonPtpIpClient implements Closeable {
         writeInt(payload, 0x00010000);
         writePacket(payload.toByteArray());
         cameraName = "Z5II".equals(model) ? "Nikon Z 5II" : "Nikon Z 30";
+    }
+
+    private void readDeviceInfo(String model) {
+        try {
+            DeviceInfo deviceInfo = DeviceInfo.parse(readCommandData(OP_GET_DEVICE_INFO, new int[]{}));
+            if (!deviceInfo.model.isEmpty()) {
+                cameraName = deviceInfo.model;
+            }
+            serialNumber = deviceInfo.serialNumber;
+        } catch (IOException ignored) {
+            cameraName = "Z5II".equals(model) ? "Nikon Z 5II" : "Nikon Z 30";
+            serialNumber = "";
+        }
     }
 
     private void readInitAck() throws IOException {
@@ -334,10 +380,12 @@ final class NikonPtpIpClient implements Closeable {
     static final class Session {
         final int sessionId;
         final String cameraName;
+        final String serialNumber;
 
-        Session(int sessionId, String cameraName) {
+        Session(int sessionId, String cameraName, String serialNumber) {
             this.sessionId = sessionId;
             this.cameraName = cameraName;
+            this.serialNumber = serialNumber;
         }
     }
 
@@ -419,6 +467,70 @@ final class NikonPtpIpClient implements Closeable {
                 return "image/x-nikon-nef";
             }
             return "image/jpeg";
+        }
+
+        private static String readPtpString(ByteBuffer buffer, String fallback) {
+            if (!buffer.hasRemaining()) {
+                return fallback;
+            }
+            int length = Byte.toUnsignedInt(buffer.get());
+            if (length == 0 || buffer.remaining() < length * 2) {
+                return fallback;
+            }
+            StringBuilder builder = new StringBuilder();
+            for (int index = 0; index < length - 1; index++) {
+                builder.append(buffer.getChar());
+            }
+            if (buffer.remaining() >= 2) {
+                buffer.getChar();
+            }
+            return builder.length() == 0 ? fallback : builder.toString();
+        }
+    }
+
+    private static final class DeviceInfo {
+        final String model;
+        final String serialNumber;
+
+        DeviceInfo(String model, String serialNumber) {
+            this.model = model;
+            this.serialNumber = serialNumber;
+        }
+
+        static DeviceInfo parse(byte[] bytes) {
+            ByteBuffer buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+            if (buffer.remaining() < 8) {
+                return new DeviceInfo("", "");
+            }
+
+            buffer.getShort();
+            buffer.getInt();
+            buffer.getShort();
+            readPtpString(buffer, "");
+            buffer.getShort();
+            skipUInt16Array(buffer);
+            skipUInt16Array(buffer);
+            skipUInt16Array(buffer);
+            skipUInt16Array(buffer);
+            skipUInt16Array(buffer);
+            String manufacturer = readPtpString(buffer, "");
+            String model = readPtpString(buffer, "");
+            readPtpString(buffer, "");
+            String serialNumber = readPtpString(buffer, "");
+            if (model.isEmpty() && !manufacturer.isEmpty()) {
+                model = manufacturer;
+            }
+            return new DeviceInfo(model, serialNumber);
+        }
+
+        private static void skipUInt16Array(ByteBuffer buffer) {
+            if (buffer.remaining() < 4) {
+                buffer.position(buffer.limit());
+                return;
+            }
+            long count = Integer.toUnsignedLong(buffer.getInt());
+            int bytesToSkip = (int) Math.min(buffer.remaining(), count * 2);
+            buffer.position(buffer.position() + bytesToSkip);
         }
 
         private static String readPtpString(ByteBuffer buffer, String fallback) {

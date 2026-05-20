@@ -62,11 +62,11 @@ button:disabled {
 .app-topbar {
   position: relative;
   z-index: 40;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 18px 24px;
+  gap: 12px;
+  padding: 10px 18px;
   border-bottom: 1px solid rgba(247, 244, 234, 0.12);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
@@ -82,6 +82,17 @@ button:disabled {
   border: 1px solid rgba(247, 244, 234, 0.14);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.18);
+}
+
+.top-settings-action {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(247, 244, 234, 0.14);
+  border-radius: 8px;
+  color: #f7f4ea;
+  background: rgba(247, 244, 234, 0.07);
 }
 
 .page-tabs button {
@@ -112,11 +123,11 @@ button:disabled {
 .control-rail {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   width: min(560px, 100%);
   height: 100%;
   margin: 0 auto;
-  padding: 28px 28px max(28px, calc(28px + var(--safe-bottom)));
+  padding: 18px 24px max(22px, calc(22px + var(--safe-bottom)));
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
     rgba(17, 19, 21, 0.58);
@@ -141,16 +152,17 @@ button:disabled {
 }
 
 .brand-lockup {
-  gap: 14px;
+  min-width: 0;
+  gap: 10px;
 }
 
 .brand-lockup.compact .brand-mark {
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
 }
 
 .brand-lockup.compact h1 {
-  font-size: clamp(1.35rem, 2.2vw, 2rem);
+  font-size: 1.28rem;
 }
 
 .brand-mark {
@@ -191,14 +203,14 @@ h2 {
 
 .status-panel {
   gap: 14px;
-  padding: 16px;
+  padding: 12px;
   border: 1px solid rgba(247, 244, 234, 0.14);
   border-radius: 8px;
   background: rgba(247, 244, 234, 0.06);
 }
 
 .connect-panel .status-panel {
-  margin-top: auto;
+  min-width: 0;
 }
 
 .status-panel strong,
@@ -217,11 +229,52 @@ h2 {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 999px;
   color: #111315;
   background: #8a8f90;
+}
+
+.camera-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: 14px;
+  min-height: 132px;
+}
+
+.camera-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.camera-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.camera-facts span {
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid rgba(247, 244, 234, 0.12);
+  border-radius: 6px;
+  color: rgba(247, 244, 234, 0.68);
+  background: rgba(247, 244, 234, 0.06);
+  font-size: 0.75rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.camera-product {
+  width: 100%;
+  max-height: 126px;
+  object-fit: contain;
+  filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.42));
 }
 
 .signal.online {
@@ -343,7 +396,7 @@ h2 {
 
 .button-row {
   gap: 10px;
-  margin-top: auto;
+  margin-top: 0;
 }
 
 .primary-action,
@@ -451,9 +504,27 @@ h2 {
 
 .download-page-action {
   width: 100%;
-  min-height: 56px;
-  margin-top: 4px;
-  font-size: 1rem;
+  min-height: 44px;
+  margin-top: 0;
+  padding: 0 14px;
+  font-size: 0.94rem;
+}
+
+.connect-secondary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.capture-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(247, 244, 234, 0.62);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .settings-panel {
@@ -623,9 +694,17 @@ h2 {
 
 @media (max-width: 900px) {
   .app-topbar {
-    align-items: stretch;
-    flex-direction: column;
-    padding: 14px 18px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 14px;
+  }
+
+  .page-tabs {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+
+  .top-settings-action {
+    grid-column: 2;
   }
 
   .button-row {
@@ -636,7 +715,7 @@ h2 {
 @media (max-width: 640px) {
   .control-rail,
   .workspace {
-    padding: 18px;
+    padding: 14px;
   }
 
   .workspace {
@@ -648,11 +727,39 @@ h2 {
   }
 
   .brand-lockup.compact {
-    justify-content: center;
+    justify-content: start;
+  }
+
+  .brand-lockup.compact .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-lockup.compact h1 {
+    font-size: 1.08rem;
   }
 
   .page-tabs {
     width: 100%;
+  }
+
+  .camera-hero {
+    grid-template-columns: minmax(0, 1fr) 112px;
+    gap: 10px;
+    min-height: 116px;
+  }
+
+  .camera-product {
+    max-height: 104px;
+  }
+
+  .connect-secondary-row {
+    grid-template-columns: 1fr;
+  }
+
+  .capture-note {
+    justify-content: center;
+    white-space: normal;
   }
 
   .toolbar,

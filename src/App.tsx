@@ -6,6 +6,7 @@ import {
   Image,
   Images,
   Loader2,
+  ScanLine,
   RadioTower,
   RefreshCw,
   Settings,
@@ -22,20 +23,41 @@ const cameraClient = new NikonCameraClient();
 
 type ActiveView = 'connect' | 'download';
 
+interface SavedConnectionSettings {
+  model?: CameraModel;
+  mode?: ConnectionMode;
+  host?: string;
+}
+
+function loadConnectionSettings(): SavedConnectionSettings {
+  try {
+    return JSON.parse(window.localStorage.getItem('connectionSettings') ?? '{}') as SavedConnectionSettings;
+  } catch {
+    return {};
+  }
+}
+
 export function App() {
+  const savedConnectionSettings = useMemo(loadConnectionSettings, []);
+  const initialModel = savedConnectionSettings.model ?? 'Z30';
+  const initialProfile = cameraProfiles.find((item) => item.id === initialModel) ?? cameraProfiles[0];
+  const initialMode = savedConnectionSettings.mode && initialProfile.supportedModes.includes(savedConnectionSettings.mode)
+    ? savedConnectionSettings.mode
+    : initialProfile.supportedModes[0];
   const [activeView, setActiveView] = useState<ActiveView>('connect');
-  const [model, setModel] = useState<CameraModel>('Z30');
-  const [mode, setMode] = useState<ConnectionMode>('ap');
-  const [host, setHost] = useState('');
+  const [model, setModel] = useState<CameraModel>(initialModel);
+  const [mode, setMode] = useState<ConnectionMode>(initialMode);
+  const [host, setHost] = useState(savedConnectionSettings.host ?? '');
   const [size, setSize] = useState<DownloadSize>('8mp');
   const [connection, setConnection] = useState<CameraConnection | null>(null);
   const [photos, setPhotos] = useState<CameraPhoto[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [busy, setBusy] = useState<'connect' | 'refresh' | 'download' | null>(null);
+  const [busy, setBusy] = useState<'connect' | 'refresh' | 'download' | 'capture' | null>(null);
   const [message, setMessage] = useState('请选择相机并连接 Wi-Fi。');
   const [jobs, setJobs] = useState<DownloadJob[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [albumName, setAlbumName] = useState(() => window.localStorage.getItem('downloadAlbumName') ?? '尼康图传');
+  const [lastCaptureAt, setLastCaptureAt] = useState('');
 
   const profile = cameraProfiles.find((item) => item.id === model) ?? cameraProfiles[0];
   const selectedPhotos = useMemo(() => photos.filter((photo) => selected.has(photo.objectHandle)), [photos, selected]);
@@ -54,6 +76,7 @@ export function App() {
     try {
       const nextConnection = await cameraClient.connect(model, mode, connectionHost);
       setConnection(nextConnection);
+      window.localStorage.setItem('connectionSettings', JSON.stringify({ model, mode, host: connectionHost }));
       setMessage(`${nextConnection.cameraName ?? profile.name} 已连接，正在读取照片。`);
       await refreshPhotos();
     } catch (error) {
@@ -84,6 +107,26 @@ export function App() {
     setSelected(new Set());
     setJobs([]);
     setMessage('已断开连接。');
+  }
+
+  async function capturePhoto() {
+    if (!connection) {
+      setMessage('请先连接相机，再遥控拍照。');
+      return;
+    }
+
+    setBusy('capture');
+    setMessage('正在遥控相机拍照...');
+    try {
+      await cameraClient.capturePhoto();
+      setLastCaptureAt(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
+      setMessage('拍照指令已发送，正在刷新照片列表。');
+      await refreshPhotos();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '遥控拍照失败，请确认相机处于可拍摄状态。');
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function downloadSelected() {
@@ -204,11 +247,17 @@ export function App() {
             下载照片
           </button>
         </nav>
+
+        <button className="top-settings-action" onClick={() => setShowSettings((current) => !current)} title="设置">
+          <Settings size={18} />
+        </button>
       </header>
 
       <section className={`page-panel connect-panel ${activeView === 'connect' ? 'active' : ''}`} hidden={activeView !== 'connect'}>
         <div className="control-rail">
-        <div className="status-panel">
+        <div className="camera-hero">
+          <div className="camera-copy">
+            <div className="status-panel">
           <div className={`signal ${connection ? 'online' : ''}`}>
             {connection ? <Wifi size={22} /> : <WifiOff size={22} />}
           </div>
@@ -216,6 +265,15 @@ export function App() {
             <strong>{connection ? '相机已连接' : '等待连接'}</strong>
             <span>{message}</span>
           </div>
+        </div>
+            <div className="camera-facts">
+              <span>{profile.name}</span>
+              <span>{mode.toUpperCase()} 模式</span>
+              <span>{connection?.host ? connection.host : '自动发现地址'}</span>
+              <span>序列号：{connection?.serialNumber ?? '连接后显示'}</span>
+            </div>
+          </div>
+          <img className="camera-product" src={profile.imageUrl} alt={profile.name} />
         </div>
 
         <label className="field">
@@ -278,15 +336,21 @@ export function App() {
           <button className="icon-action" disabled={!connection || busy === 'refresh'} onClick={refreshPhotos} title="刷新">
             {busy === 'refresh' ? <Loader2 className="spin" size={18} /> : <RefreshCw size={18} />}
           </button>
-          <button className="icon-action" onClick={() => setShowSettings((current) => !current)} title="设置">
-            <Settings size={18} />
+          <button className="icon-action" disabled={!connection || busy !== null} onClick={capturePhoto} title="遥控拍照">
+            {busy === 'capture' ? <Loader2 className="spin" size={18} /> : <Camera size={18} />}
           </button>
         </div>
 
-        <button className="download-page-action" onClick={openDownloadView}>
-          <Images size={18} />
-          {connection ? '下载照片' : '请先连接相机'}
-        </button>
+        <div className="connect-secondary-row">
+          <button className="download-page-action" onClick={openDownloadView}>
+            <Images size={17} />
+            {connection ? '查看/下载照片' : '连接后查看照片'}
+          </button>
+          <div className="capture-note">
+            <ScanLine size={16} />
+            {lastCaptureAt ? `上次拍照 ${lastCaptureAt}` : '连接后可遥控拍照'}
+          </div>
+        </div>
 
         {showSettings ? (
           <div className="settings-panel">

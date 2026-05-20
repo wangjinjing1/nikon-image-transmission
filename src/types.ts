@@ -9,6 +9,7 @@ export interface CameraProfile {
   name: string;
   supportedModes: ConnectionMode[];
   defaultHost: string;
+  imageUrl: string;
   notes: string;
 }
 
@@ -18,6 +19,7 @@ export interface CameraConnection {
   mode: ConnectionMode;
   host: string;
   cameraName?: string;
+  serialNumber?: string;
   sessionId?: number;
 }
 
