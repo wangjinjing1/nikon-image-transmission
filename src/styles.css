@@ -1,6 +1,10 @@
 :root {
   color: #f7f4ea;
   background: #111315;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
   font-family:
     "Aptos",
     "Segoe UI",
@@ -19,6 +23,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     linear-gradient(120deg, rgba(191, 29, 45, 0.22), transparent 34%),
     radial-gradient(circle at 85% 20%, rgba(238, 192, 89, 0.18), transparent 26%),
@@ -44,6 +49,12 @@ button:disabled {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
   min-height: 100vh;
+  min-height: 100dvh;
+  padding:
+    var(--safe-top)
+    var(--safe-right)
+    max(var(--safe-bottom), 10px)
+    var(--safe-left);
 }
 
 .control-rail {
@@ -280,7 +291,7 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 28px;
+  padding: 28px 28px max(28px, calc(28px + var(--safe-bottom)));
   min-width: 0;
 }
 
@@ -521,6 +532,10 @@ h2 {
   .control-rail,
   .workspace {
     padding: 18px;
+  }
+
+  .workspace {
+    padding-bottom: max(18px, calc(18px + var(--safe-bottom)));
   }
 
   .toolbar,
