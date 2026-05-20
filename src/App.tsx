@@ -6,7 +6,6 @@ import {
   Image,
   Images,
   Loader2,
-  ScanLine,
   RadioTower,
   RefreshCw,
   Settings,
@@ -57,7 +56,6 @@ export function App() {
   const [jobs, setJobs] = useState<DownloadJob[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [albumName, setAlbumName] = useState(() => window.localStorage.getItem('downloadAlbumName') ?? '尼康图传');
-  const [lastCaptureAt, setLastCaptureAt] = useState('');
 
   const profile = cameraProfiles.find((item) => item.id === model) ?? cameraProfiles[0];
   const selectedPhotos = useMemo(() => photos.filter((photo) => selected.has(photo.objectHandle)), [photos, selected]);
@@ -107,26 +105,6 @@ export function App() {
     setSelected(new Set());
     setJobs([]);
     setMessage('已断开连接。');
-  }
-
-  async function capturePhoto() {
-    if (!connection) {
-      setMessage('请先连接相机，再遥控拍照。');
-      return;
-    }
-
-    setBusy('capture');
-    setMessage('正在遥控相机拍照...');
-    try {
-      await cameraClient.capturePhoto();
-      setLastCaptureAt(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
-      setMessage('拍照指令已发送，正在刷新照片列表。');
-      await refreshPhotos();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '遥控拍照失败，请确认相机处于可拍摄状态。');
-    } finally {
-      setBusy(null);
-    }
   }
 
   async function downloadSelected() {
@@ -255,9 +233,7 @@ export function App() {
 
       <section className={`page-panel connect-panel ${activeView === 'connect' ? 'active' : ''}`} hidden={activeView !== 'connect'}>
         <div className="control-rail">
-        <div className="camera-hero">
-          <div className="camera-copy">
-            <div className="status-panel">
+        <div className="status-panel compact-status">
           <div className={`signal ${connection ? 'online' : ''}`}>
             {connection ? <Wifi size={22} /> : <WifiOff size={22} />}
           </div>
@@ -266,15 +242,12 @@ export function App() {
             <span>{message}</span>
           </div>
         </div>
-            <div className="camera-facts">
+        <div className="camera-facts">
               <span>{profile.name}</span>
               <span>{mode.toUpperCase()} 模式</span>
               <span>{connection?.host ? connection.host : '自动发现地址'}</span>
               <span>序列号：{connection?.serialNumber ?? '连接后显示'}</span>
             </div>
-          </div>
-          <img className="camera-product" src={profile.imageUrl} alt={profile.name} />
-        </div>
 
         <label className="field">
           <span>相机型号</span>
@@ -336,21 +309,12 @@ export function App() {
           <button className="icon-action" disabled={!connection || busy === 'refresh'} onClick={refreshPhotos} title="刷新">
             {busy === 'refresh' ? <Loader2 className="spin" size={18} /> : <RefreshCw size={18} />}
           </button>
-          <button className="icon-action" disabled={!connection || busy !== null} onClick={capturePhoto} title="遥控拍照">
-            {busy === 'capture' ? <Loader2 className="spin" size={18} /> : <Camera size={18} />}
-          </button>
         </div>
 
-        <div className="connect-secondary-row">
           <button className="download-page-action" onClick={openDownloadView}>
             <Images size={17} />
             {connection ? '查看/下载照片' : '连接后查看照片'}
           </button>
-          <div className="capture-note">
-            <ScanLine size={16} />
-            {lastCaptureAt ? `上次拍照 ${lastCaptureAt}` : '连接后可遥控拍照'}
-          </div>
-        </div>
 
         {showSettings ? (
           <div className="settings-panel">

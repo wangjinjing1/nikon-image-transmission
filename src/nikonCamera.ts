@@ -6,7 +6,6 @@ interface NikonCameraPlugin {
   listPhotos(): Promise<{ photos: CameraPhoto[] }>;
   requestStoragePermission(): Promise<{ storage: 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale' }>;
   downloadPhotos(options: { objectHandles: number[]; size: DownloadSize; albumName: string }): Promise<{ saved: number }>;
-  capturePhoto(): Promise<{ captured: boolean }>;
   disconnect(): Promise<{ connected: boolean }>;
 }
 
@@ -150,16 +149,6 @@ export class NikonCameraClient {
     const { saved } = await NativeNikonCamera.downloadPhotos({ objectHandles, size, albumName });
     onProgress(saved, objectHandles.length);
     return saved;
-  }
-
-  async capturePhoto() {
-    if (this.demoMode) {
-      await wait(500);
-      return true;
-    }
-
-    const result = await NativeNikonCamera.capturePhoto();
-    return result.captured;
   }
 
   async disconnect() {

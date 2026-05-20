@@ -236,20 +236,6 @@ h2 {
   background: #8a8f90;
 }
 
-.camera-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px;
-  align-items: center;
-  gap: 14px;
-  min-height: 132px;
-}
-
-.camera-copy {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-}
-
 .camera-facts {
   display: flex;
   flex-wrap: wrap;
@@ -268,13 +254,6 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.camera-product {
-  width: 100%;
-  max-height: 126px;
-  object-fit: contain;
-  filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.42));
 }
 
 .signal.online {
@@ -510,23 +489,6 @@ h2 {
   font-size: 0.94rem;
 }
 
-.connect-secondary-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-}
-
-.capture-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(247, 244, 234, 0.62);
-  font-size: 0.82rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
 .settings-panel {
   display: grid;
   gap: 10px;
@@ -741,25 +703,6 @@ h2 {
 
   .page-tabs {
     width: 100%;
-  }
-
-  .camera-hero {
-    grid-template-columns: minmax(0, 1fr) 112px;
-    gap: 10px;
-    min-height: 116px;
-  }
-
-  .camera-product {
-    max-height: 104px;
-  }
-
-  .connect-secondary-row {
-    grid-template-columns: 1fr;
-  }
-
-  .capture-note {
-    justify-content: center;
-    white-space: normal;
   }
 
   .toolbar,

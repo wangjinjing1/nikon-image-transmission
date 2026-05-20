@@ -82,21 +82,6 @@ public class NikonCameraPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void capturePhoto(PluginCall call) {
-        executor.execute(() -> {
-            try {
-                ensureClient();
-                client.capturePhoto();
-                JSObject result = new JSObject();
-                result.put("captured", true);
-                call.resolve(result);
-            } catch (Exception exception) {
-                call.reject(exception.getMessage() == null ? "遥控拍照失败，请确认相机处于可拍摄状态。" : exception.getMessage(), exception);
-            }
-        });
-    }
-
-    @PluginMethod
     public void requestStoragePermission(PluginCall call) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || getPermissionState("storage") == PermissionState.GRANTED) {
             JSObject result = new JSObject();

@@ -9,7 +9,6 @@ export interface CameraProfile {
   name: string;
   supportedModes: ConnectionMode[];
   defaultHost: string;
-  imageUrl: string;
   notes: string;
 }
 

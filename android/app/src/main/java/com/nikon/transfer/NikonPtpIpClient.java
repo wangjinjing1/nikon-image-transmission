@@ -46,7 +46,6 @@ final class NikonPtpIpClient implements Closeable {
     private static final int OP_GET_OBJECT_INFO = 0x1008;
     private static final int OP_GET_OBJECT = 0x1009;
     private static final int OP_GET_THUMB = 0x100A;
-    private static final int OP_INITIATE_CAPTURE = 0x100E;
 
     private final String host;
     private final int port;
@@ -132,10 +131,6 @@ final class NikonPtpIpClient implements Closeable {
         return saved;
     }
 
-    void capturePhoto() throws IOException {
-        commandAndWait(OP_INITIATE_CAPTURE, new int[]{0, 0});
-    }
-
     private List<Integer> readObjectHandles() throws IOException {
         byte[] storageBytes = readCommandData(OP_GET_STORAGE_IDS, new int[]{});
         List<Integer> storageIds = parseUInt32Array(storageBytes);
@@ -181,31 +176,6 @@ final class NikonPtpIpClient implements Closeable {
             }
         }
         return data.toByteArray();
-    }
-
-    private void commandAndWait(int opCode, int[] params) throws IOException {
-        int currentTransaction = command(opCode, params);
-        while (true) {
-            Packet packet = readPacket();
-            if (packet.type != PTPIP_COMMAND_RESPONSE) {
-                continue;
-            }
-
-            ByteBuffer buffer = packet.payload();
-            if (buffer.remaining() < 10) {
-                throw new IOException("相机返回了无效的拍照响应。");
-            }
-
-            int responseCode = Short.toUnsignedInt(buffer.getShort());
-            int responseTransaction = buffer.getInt();
-            if (responseTransaction != currentTransaction) {
-                continue;
-            }
-            if (responseCode != 0x2001) {
-                throw new IOException("遥控拍照失败，相机响应代码：" + Integer.toHexString(responseCode));
-            }
-            return;
-        }
     }
 
     private int command(int opCode, int[] params) throws IOException {
