@@ -27,7 +27,6 @@ export function App() {
   const [model, setModel] = useState<CameraModel>('Z30');
   const [mode, setMode] = useState<ConnectionMode>('ap');
   const [host, setHost] = useState('');
-  const [wifiPassword, setWifiPassword] = useState('');
   const [size, setSize] = useState<DownloadSize>('8mp');
   const [connection, setConnection] = useState<CameraConnection | null>(null);
   const [photos, setPhotos] = useState<CameraPhoto[]>([]);
@@ -44,11 +43,6 @@ export function App() {
   const connectionHost = mode === 'ap' ? '' : host.trim();
 
   async function connect() {
-    if (mode === 'ap' && !wifiPassword.trim()) {
-      setMessage('请输入相机 Wi-Fi 密码后再连接。');
-      return;
-    }
-
     setBusy('connect');
     setMessage(
       mode === 'ap'
@@ -58,7 +52,7 @@ export function App() {
           : '正在自动发现 STA 模式相机...'
     );
     try {
-      const nextConnection = await cameraClient.connect(model, mode, connectionHost, wifiPassword.trim());
+      const nextConnection = await cameraClient.connect(model, mode, connectionHost);
       setConnection(nextConnection);
       setMessage(`${nextConnection.cameraName ?? profile.name} 已连接，正在读取照片。`);
       await refreshPhotos();
@@ -266,16 +260,6 @@ export function App() {
             </label>
           </div>
         )}
-
-        <label className="field">
-          <span>{mode === 'ap' ? '相机 Wi-Fi 密码' : '手机热点/Wi-Fi 密码（可选）'}</span>
-          <input
-            value={wifiPassword}
-            onChange={(event) => setWifiPassword(event.target.value)}
-            placeholder="请输入 Wi-Fi 密码"
-            type="password"
-          />
-        </label>
 
         <p className="profile-note">{profile.notes}</p>
 
